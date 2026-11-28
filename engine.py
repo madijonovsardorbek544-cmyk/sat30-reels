@@ -423,6 +423,24 @@ def render_shots_scene(sc, t):
             cx, cy = (X0 + X1) / 2, (Y0 + Y1) / 2; hw, hh = (X1 - X0) / 2 * (0.6 + 0.4 * q) + 10, (Y1 - Y0) / 2 * (0.6 + 0.4 * q) + 10
             pulse = 0.5 + 0.5 * math.sin((t - h["t0"]) * 6)
             d.rounded_rectangle((cx - hw, cy - hh, cx + hw, cy + hh), radius=14, outline=h.get("col", (255, 180, 0)) + (255,), width=int(6 + 3 * pulse))
+    for k2 in keys:
+        w = k2.get("wipe")
+        if not w or k2["img"] != k["img"] or t < k2["t"] - 0.01: continue
+        dur = k2.get("wdur", 1.4); pr = (t - k2["t"]) / dur
+        if pr >= 1.15: continue
+        x0, y0, x1, y1 = w; X0, Y0, X1, Y1 = (x0 - box[0]) * sx, (y0 - box[1]) * sy, (x1 - box[0]) * sx, (y1 - box[1]) * sy
+        if pr < 1:
+            xp = X0 + (X1 - X0) * max(0, pr); d.rectangle((xp, Y0, X1, Y1), fill=(255, 255, 255))
+            for hb in k2.get("hide", []):
+                hx0, hy0, hx1, hy1 = hb; d.rectangle(((hx0 - box[0]) * sx, (hy0 - box[1]) * sy, (hx1 - box[0]) * sx, (hy1 - box[1]) * sy), fill=(255, 255, 255))
+        else: xp = X1
+        if int(t * 3) % 2 == 0 or pr < 1: d.rectangle((xp + 4, Y0 + 8, xp + 9, Y1 - 8), fill=(45, 112, 179))
+    for n in sc.get("notes", []):
+        if n["t0"] <= t < n["t1"]:
+            q = min(1, (t - n["t0"]) / 0.4, (n["t1"] - t) / 0.3); ov = Image.new("RGBA", (PW, 112), (0, 0, 0, 0)); od = ImageDraw.Draw(ov)
+            od.rounded_rectangle((24, 4, PW - 24, 106), radius=22, fill=n.get("bg", (255, 244, 200, 255))); od.rounded_rectangle((24, 4, 40, 106), radius=8, fill=n.get("bar", (255, 180, 0, 255)))
+            _mtext(ov, 62, 78, n["m"], 60, (25, 25, 30, 255)); ov.putalpha(ov.getchannel("A").point(lambda v: int(v * q)))
+            lay.alpha_composite(ov, (0, int(n["y"] + (1 - q) * 30)))
     chip(lay, k.get("label", "REAL DESMOS"), 24, sc["_ph"] - 100, fill=(25, 25, 30), fg=YELLOW, size=38)
     lay.putalpha(sc["_mask"]); return lay
 SCENE_PREP = {"shots": prep_shots_scene, "text": prep_text_scene, "graph": prep_graph_scene, "calc": prep_calc_scene}
