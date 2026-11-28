@@ -391,8 +391,41 @@ def render_calc_scene(sc, t):
             if k > 0.8: dd.text((PW - 60 - sc.get("res_w", 190) // 2, top + 36), sc.get("res_t", "\u2212294"), font=font(F_B, 36), fill=(8, 90, 50, 255), anchor="mm")
             if sc.get("res_eq", True): dd.text((PW - 270, top + 36), "=", font=font(F_B, 40), fill=(90, 90, 90, 255), anchor="mm")
     return layer
-SCENE_PREP = {"text": prep_text_scene, "graph": prep_graph_scene, "calc": prep_calc_scene}
-SCENE_RENDER = {"text": render_text_scene, "graph": render_graph_scene, "calc": render_calc_scene}
+
+def prep_shots_scene(sc):
+    sc["_imgs"] = {}
+    for k in sc["keys"]:
+        p = k["img"]
+        if p not in sc["_imgs"]: sc["_imgs"][p] = Image.open(p).convert("RGB")
+    m = Image.new("L", (PW * 2, PH * 2), 0); ImageDraw.Draw(m).rounded_rectangle((0, 0, PW * 2 - 1, PH * 2 - 1), radius=36 * 2, fill=255)
+    sc["_mask"] = m.resize((PW, PH), Image.LANCZOS)
+def _view(sc, img, crop):
+    x0, y0, x1, y1 = crop; src = sc["_imgs"][img]
+    cw, ch = x1 - x0, y1 - y0; s = max(PW / cw, PH / ch)
+    vw, vh = PW / s, PH / s; cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    box = (cx - vw / 2, cy - vh / 2, cx + vw / 2, cy + vh / 2)
+    out = src.transform((PW, PH), Image.EXTENT, box, Image.BICUBIC).filter(ImageFilter.UnsharpMask(1.2, 60, 2))
+    return out, box
+def render_shots_scene(sc, t):
+    keys = sc["keys"]; i = max([j for j, k in enumerate(keys) if k["t"] <= t] or [0]); k = keys[i]; pk = keys[i - 1] if i > 0 else k
+    u = ease_out(min(1, max(0, (t - k["t"]) / 0.7))) if i > 0 else 1
+    crop = tuple(a + (b - a) * u for a, b in zip(pk["crop"], k["crop"]))
+    cur, box = _view(sc, k["img"], crop)
+    if k["img"] != pk["img"] and t - k["t"] < 0.35:
+        prev, _ = _view(sc, pk["img"], crop); cur = Image.blend(prev, cur, max(0, (t - k["t"]) / 0.35))
+    lay = cur.convert("RGBA"); d = ImageDraw.Draw(lay)
+    sx = PW / (box[2] - box[0]); sy = PH / (box[3] - box[1])
+    for h in sc.get("hl", []):
+        if h["t0"] <= t < h["t1"]:
+            q = ease_back(min(1, (t - h["t0"]) / 0.35)); x0, y0, x1, y1 = h["rect"]
+            X0, Y0, X1, Y1 = (x0 - box[0]) * sx, (y0 - box[1]) * sy, (x1 - box[0]) * sx, (y1 - box[1]) * sy
+            cx, cy = (X0 + X1) / 2, (Y0 + Y1) / 2; hw, hh = (X1 - X0) / 2 * (0.6 + 0.4 * q) + 10, (Y1 - Y0) / 2 * (0.6 + 0.4 * q) + 10
+            pulse = 0.5 + 0.5 * math.sin((t - h["t0"]) * 6)
+            d.rounded_rectangle((cx - hw, cy - hh, cx + hw, cy + hh), radius=14, outline=h.get("col", (255, 180, 0)) + (255,), width=int(6 + 3 * pulse))
+    chip(lay, k.get("label", "REAL DESMOS"), 24, PH - 92, fill=(25, 25, 30), fg=YELLOW, size=34)
+    lay.putalpha(sc["_mask"]); return lay
+SCENE_PREP = {"shots": prep_shots_scene, "text": prep_text_scene, "graph": prep_graph_scene, "calc": prep_calc_scene}
+SCENE_RENDER = {"shots": render_shots_scene, "text": render_text_scene, "graph": render_graph_scene, "calc": render_calc_scene}
 for sc in C["scenes"]:
     SCENE_PREP[sc["kind"]](sc)
 
