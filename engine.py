@@ -378,18 +378,18 @@ def render_calc_scene(sc, t):
         q = ease_out((t - sc["pcue"]) / 0.4); ov = Image.new("RGBA", (PW, 150), (0, 0, 0, 0)); od = ImageDraw.Draw(ov)
         od.text((84, 8), "REGRESSION PARAMETERS", font=font(F_B, 20), fill=(110, 110, 110, 255), anchor="lt")
         if t >= sc["ccue"]:
-            k = ease_back((t - sc["ccue"]) / 0.4); od.rounded_rectangle((70, 94, 70 + int(330 * k), 142), radius=12, fill=(255, 232, 140, 255))
-        _mtext(ov, 84, 66, "*a* = \u22123", 48, (25, 25, 30, 255)); _mtext(ov, 390, 66, "*b* = 60", 48, (25, 25, 30, 255)); _mtext(ov, 84, 132, "*c* = \u2212294", 48, (25, 25, 30, 255))
+            k = ease_back((t - sc["ccue"]) / 0.4); hy = sc.get("hl_y", 94); od.rounded_rectangle((70, hy, 70 + int(sc.get("hl_w", 330) * k), hy + 48), radius=12, fill=(255, 232, 140, 255))
+        for pm, px, py in sc.get("params", [("*a* = \u22123", 84, 66), ("*b* = 60", 390, 66), ("*c* = \u2212294", 84, 132)]): _mtext(ov, px, py, pm, 48, (25, 25, 30, 255))
         ov.putalpha(ov.getchannel("A").point(lambda v: int(v * q))); layer.paste(ov, (0, 350), ov)
     if t >= sc["r4cue"]:
         top = 500; dd.line([(0, top), (PW, top)], fill=(228, 228, 228, 255), width=2); dd.ellipse((24, top + 14, 68, top + 58), fill=(130, 130, 130, 255))
-        prog = ease_out((t - sc["r4cue"]) / 0.6); tmp = Image.new("RGBA", (300, 70), (0, 0, 0, 0)); _mtext(tmp, 0, 52, "*f*(0)", 54, (25, 25, 30, 255))
-        w = max(1, int(300 * prog)); layer.paste(tmp.crop((0, 0, w, 70)), (84, top - 2), tmp.crop((0, 0, w, 70)))
+        prog = ease_out((t - sc["r4cue"]) / 0.6); RW = sc.get("r4w", 300); tmp = Image.new("RGBA", (RW, 70), (0, 0, 0, 0)); _mtext(tmp, 0, 52, sc.get("r4m", "*f*(0)"), sc.get("r4fs", 54), (25, 25, 30, 255))
+        w = max(1, int(RW * prog)); layer.paste(tmp.crop((0, 0, w, 70)), (84, top - 2), tmp.crop((0, 0, w, 70)))
         if t >= sc["res"]:
-            k = ease_back((t - sc["res"]) / 0.4); bw = int(190 * k); good = t >= sc["res"]
+            k = ease_back((t - sc["res"]) / 0.4); bw = int(sc.get("res_w", 190) * k); good = t >= sc["res"]
             dd.rounded_rectangle((PW - 60 - bw, top + 10, PW - 60, top + 62), radius=12, fill=(185, 245, 208, 255), outline=GREEN + (255,), width=4)
-            if k > 0.8: dd.text((PW - 60 - 95, top + 36), "\u2212294", font=font(F_B, 36), fill=(8, 90, 50, 255), anchor="mm")
-            dd.text((PW - 270, top + 36), "=", font=font(F_B, 40), fill=(90, 90, 90, 255), anchor="mm")
+            if k > 0.8: dd.text((PW - 60 - sc.get("res_w", 190) // 2, top + 36), sc.get("res_t", "\u2212294"), font=font(F_B, 36), fill=(8, 90, 50, 255), anchor="mm")
+            if sc.get("res_eq", True): dd.text((PW - 270, top + 36), "=", font=font(F_B, 40), fill=(90, 90, 90, 255), anchor="mm")
     return layer
 SCENE_PREP = {"text": prep_text_scene, "graph": prep_graph_scene, "calc": prep_calc_scene}
 SCENE_RENDER = {"text": render_text_scene, "graph": render_graph_scene, "calc": render_calc_scene}
